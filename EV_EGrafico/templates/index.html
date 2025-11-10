@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Central EV_Charging</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f3f4f6;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .cp-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .cp-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .cp-card h3 {
+            margin-top: 0;
+        }
+        .status {
+            font-weight: bold;
+        }
+        .status.ACTIVO { color: green; }
+        .status.DESCONECTADO { color: red; }
+        .status.OCUPADO { color: orange; }
+        .log-container {
+            margin-top: 40px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        #log {
+            font-family: monospace;
+            font-size: 14px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Panel de Control de Puntos de Recarga</h1>
+
+    <div class="cp-grid" id="cp-grid">
+        {% for cp_id, info in cps.items() %}
+        <div class="cp-card">
+            <h3>{{ cp_id }}</h3>
+            <p><b>Ubicación:</b> {{ info.ubicacion }}</p>
+            <p><b>Precio:</b> {{ info.precio_kwh }} €/kWh</p>
+            <p><b>Estado:</b> <span class="status {{ info.estado }}">{{ info.estado }}</span></p>
+            <p><b>Healthy:</b> {{ info.healthy }}</p>
+            <p><b>In Use:</b> {{ info.in_use }}</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="log-container">
+        <h2>Logs</h2>
+        <div id="log">Esperando registros...</div>
+    </div>
+
+    <script>
+        async function actualizarCPs() {
+            const res = await fetch("/api/cps");
+            const data = await res.json();
+            const grid = document.getElementById("cp-grid");
+            grid.innerHTML = "";
+
+            for (const [cp_id, info] of Object.entries(data)) {
+                const card = document.createElement("div");
+                card.className = "cp-card";
+                card.innerHTML = `
+                    <h3>${cp_id}</h3>
+                    <p><b>Ubicación:</b> ${info.ubicacion}</p>
+                    <p><b>Precio:</b> ${info.precio_kwh} €/kWh</p>
+                    <p><b>Estado:</b> <span class="status ${info.estado}">${info.estado}</span></p>
+                    <p><b>Healthy:</b> ${info.healthy}</p>
+                    <p><b>In Use:</b> ${info.in_use}</p>
+                `;
+                grid.appendChild(card);
+            }
+        }
+
+        // Actualiza cada 3 segundos
+        setInterval(actualizarCPs, 3000);
+    </script>
+</body>
+</html>

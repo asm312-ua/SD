@@ -1,0 +1,24 @@
+{
+  "CP01": {
+    "ubicacion": "Calle Mayor 15",
+    "precio_kwh": 0.30,
+    "estado": "DESCONECTADO",
+    "healthy": false,
+    "in_use": false
+  },
+  "CP02": {
+    "ubicacion": "Av. de Europa 22",
+    "precio_kwh": 0.25,
+    "estado": "DESCONECTADO",
+    "healthy": false,
+    "in_use": false
+  },
+  "CP03": {
+    "ubicacion": "Torrijas 33",
+    "precio_kwh": 0.77,
+    "estado": "DESCONECTADO",
+    "healthy": false,
+    "in_use": false
+  }
+}
+
