@@ -44,7 +44,7 @@ evento_menu_detener = threading.Event()
 # ============================================================
 # Configuración de Kafka
 # ============================================================
-KAFKA_BROKER = 'localhost:9092'
+KAFKA_BROKER = '172.20.243.100:9092'
 TOPIC_SOLICITUD = 'peticiones_engine'
 TOPIC_RESPUESTA = 'respuestas_central'
 TOPIC_TELEMETRIA = 'telemetry_cp'
@@ -107,6 +107,7 @@ def enviar_a_kafka(topic: str, payload: dict):
     else:
         print(f"[KAFKA:{topic}] {mensaje}")
 
+
 def iniciar_consumidor_kafka():
     global CONSUMIDOR_RESPUESTA
     try:
@@ -123,7 +124,6 @@ def iniciar_consumidor_kafka():
         print(f"[Engine {CP_ID}] Error al iniciar consumidor: {e}")
         CONSUMIDOR_RESPUESTA = None
     
-
 
 def escuchar_mensajes_central():
     global en_uso, hilo_telemetria
@@ -168,12 +168,13 @@ def escuchar_mensajes_central():
                 print(f"[Engine {CP_ID}] Error procesando mensaje de central: {e}")
     finally:
         consumer.close()
+
+
 # ============================================================
 # Gestión de telemetría y tickets
 # ============================================================
 almacen_telemetria = {}
 hilo_telemetria = None
-
 
 def enviar_ticket_final():
     datos = almacen_telemetria.get(CP_ID, {})
@@ -193,7 +194,7 @@ def hilo_telemetria_f(driver_id: str, potencia_kw: float, duracion: float = None
     inicio = time.time()
     energia = 0.0
     coste = 0.0
-    precio_kwh = 0.25
+    precio_kwh = 1
     almacen_telemetria[CP_ID] = {'driver_id': driver_id, 'kwh': 0.0, 'cost': 0.0, 'start_ts': inicio}
 
     try:
@@ -284,7 +285,7 @@ def servidor_monitor(activar_evento):
 def menu_interactivo():
     global en_uso, saludable, hilo_telemetria
 
-    print(f"\n=== CP Engine {CP_ID} ===")
+    print(f"\n================ CP Engine {CP_ID} ================")
     print("1) Iniciar suministro")
     print("2) Finalizar suministro")
     print("3) Marcar fallo")
@@ -292,13 +293,12 @@ def menu_interactivo():
     print("5) Mostrar estado")
     print("6) Salir")
     print("q) Parar suministro inmediato")
+    print("================================================")
 
     evento_menu_detener.clear()
 
     def leer_input(prompt='> ', timeout=0.5):
         import sys, time
-        sys.stdout.write('\n' + prompt)
-        sys.stdout.flush()
         if _IS_WINDOWS:
             inicio = time.time()
             buffer = ''
@@ -320,12 +320,21 @@ def menu_interactivo():
             return None
 
     try:
+        ultima_vez_prompt = False
+        
         while True:
             if evento_menu_detener.is_set() or evento_apagado.is_set():
                 return 'sleep'
-            comando = leer_input('> ', timeout=0.5)
+            
+            if not ultima_vez_prompt:
+                sys.stdout.write('> ')
+                sys.stdout.flush()
+                ultima_vez_prompt = True
+
+            comando = leer_input(timeout=0.5)
             if comando is None:
                 continue
+            ultima_vez_prompt = False
             cmd = comando.lower()
 
             if cmd in ('1', 'start'):
@@ -384,7 +393,7 @@ def menu_interactivo():
                 print("[✓] Estado marcado como saludable.")
 
             elif cmd in ('5', 'status'):
-                print(f"Estado actual: saludable={saludable}, en_uso={en_uso}")
+                print(f"[Engine]Estado actual: saludable={saludable}, en_uso={en_uso}")
 
             elif cmd in ('6', 'quit'):
                 print("Cerrando Engine...")
@@ -434,7 +443,7 @@ if __name__ == '__main__':
                 activar_evento.clear()
                 time.sleep(0.1)
                 continue
-            print("[Engine] Activado por Monitor. Iniciando menú.")
+            print(f"[Engine {CP_ID}] Activado por Monitor. Iniciando menú.")
             resultado = menu_interactivo()
             if resultado == 'exit':
                 break

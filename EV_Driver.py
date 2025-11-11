@@ -19,7 +19,7 @@ def confirmacion_envio(err, msg):
     if err is not None:
         print(f"Error al enviar mensaje: {err}")
     else:
-        print(f"[OK] Mensaje enviado a {msg.topic()} [{msg.partition()}]")
+        print(f"[Callback] Mensaje enviado a '{msg.topic()}'")
 
 
 # ============================================================
@@ -34,7 +34,7 @@ def escuchar_respuestas(broker, driver_id):
     consumer = Consumer(consumer_config)
     consumer.subscribe([TOPIC_RESPUESTAS_CENTRAL])
 
-    print(f"[DRIVER {driver_id}] Escuchando respuestas en '{TOPIC_RESPUESTAS_CENTRAL}'...")
+    print(f"[{driver_id}] Escuchando respuestas en '{TOPIC_RESPUESTAS_CENTRAL}'...")
 
     try:
         while True:
@@ -52,7 +52,6 @@ def escuchar_respuestas(broker, driver_id):
             if data.get('driver_id', '').lower() != driver_id.lower():
                 continue
 
-
             estado = data.get('estado', '').lower()
             cp_id = data.get('cp_id', 'unknown')
 
@@ -62,12 +61,17 @@ def escuchar_respuestas(broker, driver_id):
                 precio_unitario = float(data.get('cost', 0))  # cost = €/kWh
                 total = round(kwh * precio_unitario, 2)
 
-                print("\n=== TICKET FINAL DE CARGA ===")
+                print("\n============= TICKET FINAL DE CARGA =============")
                 print(f"Punto de carga: {cp_id}")
                 print(f"Energía suministrada: {kwh:.2f} kWh")
                 print(f"Precio por kWh: {precio_unitario:.3f} €/kWh")
-                print(f"Importe total: {total:.2f} €")
-                print("==============================\n")
+                print(f"IMPORTE TOTAL: {total:.2f} €")
+                print("==================================================\n")
+
+                #print(f"[{driver_id}] Finalizando recepción de mensajes.")
+                #consumer.close()
+                #print(f"[{driver_id}] Cerrando driver...")
+                #return 0
 
             # 🔹 Otros mensajes de la central
             else:
@@ -96,13 +100,12 @@ def manejo_solicitudes(producer, driver_id, fichero=None):
         for cp_id in cp_list:
             enviar_solicitud(producer, driver_id, cp_id)
             sleep(4)
-        print("Se han enviado correctamente todas las solicitudes.")
+        print(f"[{driver_id}] Se han enviado correctamente todas las solicitudes.")
     
     # NO HAY FICHERO
     else:
-        cp_id = input("Introduce el ID del punto de recarga: ")
+        cp_id = input(f"[{driver_id}] Introduce el ID del punto de recarga: ")
         enviar_solicitud(producer, driver_id, cp_id)
-        print("Se ha enviado correctamente la solicitud.")
 
     producer.flush()
 
@@ -114,16 +117,15 @@ def enviar_solicitud(producer, driver_id, cp_id):
     mensaje = {'driver_id': driver_id, 'cp_id': cp_id}
     producer.produce(TOPIC_SOLICITUDES_DRIVER, value=dumps(mensaje), callback=confirmacion_envio)
     producer.poll(0)
-    print(f"Solicitud enviada a CP: {cp_id}")
+    print(f"[{driver_id}] Solicitud enviada a CP: {cp_id}")
 
 
 # ============================================================
 # Inicialización del driver
 # ============================================================
 def iniciar_driver(broker, driver_id, fichero=None):
-    print(f"EV_Driver iniciado (ID: {driver_id})")
-    print(f"Conectado al broker Kafka en {broker}")
-    print("-" * 40)
+    print(f"[{driver_id}] EV_Driver iniciado.")
+    print(f"[{driver_id}] Conectado al broker Kafka en {broker}")
 
     producer = Producer({'bootstrap.servers': broker})
 
