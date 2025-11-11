@@ -9,13 +9,13 @@ from confluent_kafka import Producer, Consumer, KafkaError
 # ============================================================
 # Configuración global
 # ============================================================
-CENTRAL_HOST = '0.0.0.0'
+CENTRAL_HOST = '172.20.243.100'
 CENTRAL_PORT_ESTADOS = 6000       # Monitor -> Central (estados CP)
 CENTRAL_PORT_SOLICITUDES = 6001   # (Si se usase sockets para solicitudes CPs)
 SOCKET_BUFFER = 8192
 
 # Kafka topics (confirmados)
-KAFKA_BROKER = 'localhost:9092'
+KAFKA_BROKER = '172.20.243.100:9092'
 TOPIC_SOLICIT_DRIVER = 'solicitudes_driver'   # drivers -> central (nueva)
 TOPIC_SOLICIT_CP = 'peticiones_carga'         # (posible topic legacy / CP-related)
 TOPIC_SOLICIT_ENGINE = 'peticiones_engine'
