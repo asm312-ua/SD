@@ -27,4 +27,4 @@ def api_cps():
 
 if __name__ == "__main__":
     print("[Servidor gráfico] Ejecutando en http://ip.central:8080 ...")
-    app.run(host="172.20.243.100", port=8080, debug=True)
+    app.run(host="172.21.243.101", port=8080, debug=True)

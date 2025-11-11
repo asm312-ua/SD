@@ -1,17 +1,35 @@
 {
   "CP01": {
     "ubicacion": "Calle Mayor 15",
-    "precio_kwh": 0.30,
-    "estado": "DESCONECTADO",
-    "healthy": false,
-    "in_use": false
+    "precio_kwh": 0.3,
+    "estado": "ACTIVO",
+    "healthy": true,
+    "in_use": false,
+    "last_ticket": {
+      "cp_id": "CP01",
+      "driver_id": "DRIVER1",
+      "kwh": 0.060278,
+      "cost": 0.0603,
+      "end_ts": 1762881112.3506129
+    },
+    "ip": "172.21.243.102",
+    "cmd_port": 6003
   },
   "CP02": {
     "ubicacion": "Av. de Europa 22",
     "precio_kwh": 0.25,
-    "estado": "DESCONECTADO",
-    "healthy": false,
-    "in_use": false
+    "estado": "ACTIVO",
+    "healthy": true,
+    "in_use": false,
+    "last_ticket": {
+      "cp_id": "CP02",
+      "driver_id": "DRIVER1",
+      "kwh": 0.0175,
+      "cost": 0.0175,
+      "end_ts": 1762878914.2139
+    },
+    "ip": "172.21.243.102",
+    "cmd_port": 6002
   },
   "CP03": {
     "ubicacion": "Torrijas 33",
@@ -21,4 +39,3 @@
     "in_use": false
   }
 }
-

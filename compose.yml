@@ -15,7 +15,7 @@ services:
 
       # 3 tipos de conexiones (explico abajo)
       KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://172.21.243.101:9092
 
       # Configuración básica del broker
       KAFKA_PROCESS_ROLES: broker,controller
