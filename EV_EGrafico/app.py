@@ -26,5 +26,5 @@ def api_cps():
     return jsonify(cps)
 
 if __name__ == "__main__":
-    print("[Servidor gráfico] Ejecutando en http://localhost:8080 ...")
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    print("[Servidor gráfico] Ejecutando en http://ip.central:8080 ...")
+    app.run(host="172.20.243.100", port=8080, debug=True)
