@@ -59,7 +59,7 @@
             <p><b>Precio:</b> {{ info.precio_kwh }} €/kWh</p>
             <p><b>Estado:</b> <span class="status {{ info.estado }}">{{ info.estado }}</span></p>
             <p><b>Healthy:</b> {{ info.healthy }}</p>
-            <p><b>In Use:</b> {{ info.in_use }}</p>
+            <p><b>Suministrando:</b> {{ info.in_use }}</p>
         </div>
         {% endfor %}
     </div>
@@ -85,14 +85,14 @@
                     <p><b>Precio:</b> ${info.precio_kwh} €/kWh</p>
                     <p><b>Estado:</b> <span class="status ${info.estado}">${info.estado}</span></p>
                     <p><b>Healthy:</b> ${info.healthy}</p>
-                    <p><b>In Use:</b> ${info.in_use}</p>
+                    <p><b>Suministrando:</b> ${info.in_use}</p>
                 `;
                 grid.appendChild(card);
             }
         }
 
-        // Actualiza cada 3 segundos
-        setInterval(actualizarCPs, 3000);
+        // Actualiza cada 2 segundos
+        setInterval(actualizarCPs, 2000);
     </script>
 </body>
 </html>
