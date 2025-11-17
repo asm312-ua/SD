@@ -9,13 +9,13 @@ from confluent_kafka import Producer, Consumer, KafkaError
 # ============================================================
 # Configuración global
 # ============================================================
-CENTRAL_HOST = '172.21.243.101'
+CENTRAL_HOST = 'localhost'
 CENTRAL_PORT_ESTADOS = 6000       # Monitor -> Central (estados CP)
 CENTRAL_PORT_SOLICITUDES = 6001   # (Si se usase sockets para solicitudes CPs)
 SOCKET_BUFFER = 8192
 
 # Kafka topics (confirmados)
-KAFKA_BROKER = '172.21.243.101:9092'
+KAFKA_BROKER = 'localhost:9092'
 TOPIC_SOLICIT_DRIVER = 'solicitudes_driver'   # drivers -> central (nueva)
 TOPIC_SOLICIT_CP = 'peticiones_carga'         # (posible topic legacy / CP-related)
 TOPIC_SOLICIT_ENGINE = 'peticiones_engine'
@@ -67,7 +67,7 @@ def inicializar_kafka():
 
 
 # ============================================================
-# Gestoe de estados de CP (desde monitor por sockets)
+# Gestor de estados de CP (desde monitor por sockets)
 # ============================================================
 def manejar_estado_cp(conn, addr):
     buffer = ''
@@ -167,7 +167,7 @@ def menu_central():
 # ============================================================
 # KAFKA: funciones auxiliares (producción de respuestas)
 # ============================================================
-def enviar_respuesta_kafka(producer, driver_id, cp_id, estado, status):
+def enviar_respuesta_kafka(producer, driver_id, cp_id, estado, status, precio_kwh=None):
     if producer is None:
         print(f"[KAFKA:{TOPIC_RESPUESTAS}] fallback -> driver={driver_id} cp={cp_id} estado={estado} status={status}")
         return
@@ -175,10 +175,12 @@ def enviar_respuesta_kafka(producer, driver_id, cp_id, estado, status):
     payload = {
         'driver_id': driver_id,
         'cp_id': cp_id,
-        'estado': estado,         # clave que espera el driver
-        'mensaje': estado,        # opcional: mantener 'mensaje' con el mismo texto
+        'estado': estado,
+        'mensaje': estado,
         'status': status
     }
+    if precio_kwh is not None:
+        payload['precio_kwh'] = precio_kwh
     try:
         producer.produce(TOPIC_RESPUESTAS, key=driver_id, value=json.dumps(payload).encode('utf-8'))
         producer.flush(3)
@@ -199,6 +201,7 @@ def procesar_mensaje_kafka(producer, topic, data):
 
             with lock_estados:
                 estado_cp = estados_cp.get(cp_id)
+                precio_kwh = estado_cp.get('precio_kwh', 0.30) if estado_cp else 0.30
 
             # Validaciones de estado
             if not estado_cp:
@@ -221,8 +224,8 @@ def procesar_mensaje_kafka(producer, topic, data):
 
             # Si está libre y saludable -> autorizar carga
             mensaje_ok = f"Carga autorizada en {cp_id}"
-            enviar_respuesta_kafka(producer, driver_id, cp_id, mensaje_ok, 'ok')
-            print(f"[Central] Autorizada carga para {driver_id} en {cp_id}")
+            enviar_respuesta_kafka(producer, driver_id, cp_id, mensaje_ok, 'ok', precio_kwh)
+            print(f"[Central] Autorizada carga para {driver_id} en {cp_id} con precio: {precio_kwh}")
 
             # Notificar al Engine también para que empiece a cargar
             # (usa el mismo topic de respuestas)
@@ -231,7 +234,8 @@ def procesar_mensaje_kafka(producer, topic, data):
                 'cp_id': cp_id,
                 'estado': 'start',
                 'mensaje': 'Iniciar carga',
-                'status': 'ok'
+                'status': 'ok',
+                'precio_kwh': precio_kwh
             }
             try:
                 producer.produce(TOPIC_RESPUESTAS, key=cp_id, value=json.dumps(payload_engine).encode('utf-8'))

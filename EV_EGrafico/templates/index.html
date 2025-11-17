@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Panel Central EV_Charging</title>
     <style>
         body {
@@ -10,30 +10,61 @@
             margin: 0;
             padding: 20px;
         }
-        h1 {
-            text-align: center;
-        }
+        h1 { text-align: center; }
+
         .cp-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-top: 30px;
         }
+
         .cp-card {
-            background: white;
+            color: #111; /* texto por defecto */
             border-radius: 10px;
             padding: 15px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            transition: background-color 0.25s ease, color 0.25s ease;
         }
-        .cp-card h3 {
-            margin-top: 0;
+        .cp-card h3 { margin-top: 0; }
+
+        /* Estados: fondo según el pliego */
+        .state-activado {
+            background: #16a34a; /* verde */
+            color: white;
         }
-        .status {
+        .state-parado {
+            background: #f97316; /* naranja */
+            color: white;
+        }
+        .state-suministrando {
+            background: #059669; /* verde (otro tono) */
+            color: white;
+        }
+        .state-averiado {
+            background: #dc2626; /* rojo */
+            color: white;
+        }
+        .state-desconectado {
+            background: #9ca3af; /* gris */
+            color: white;
+        }
+
+        /* pequeño estilo para la leyenda Out of Order */
+        .out-of-order {
             font-weight: bold;
+            display:inline-block;
+            margin-left: 8px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.08);
+            color: #111;
+            font-size: 0.9em;
         }
-        .status.ACTIVO { color: green; }
-        .status.DESCONECTADO { color: red; }
-        .status.OCUPADO { color: orange; }
+
+        .detail-row { margin: 6px 0; }
+        .small { font-size: 0.9em; opacity: 0.95; }
+
         .log-container {
             margin-top: 40px;
             background: white;
@@ -52,14 +83,34 @@
     <h1>Panel de Control de Puntos de Recarga</h1>
 
     <div class="cp-grid" id="cp-grid">
+        <!-- Render inicial desde servidor (Jinja) -->
         {% for cp_id, info in cps.items() %}
-        <div class="cp-card">
+        <div class="cp-card {{ info.estado|lower }}">
             <h3>{{ cp_id }}</h3>
-            <p><b>Ubicación:</b> {{ info.ubicacion }}</p>
-            <p><b>Precio:</b> {{ info.precio_kwh }} €/kWh</p>
-            <p><b>Estado:</b> <span class="status {{ info.estado }}">{{ info.estado }}</span></p>
-            <p><b>Healthy:</b> {{ info.healthy }}</p>
-            <p><b>Suministrando:</b> {{ info.in_use }}</p>
+            <p class="detail-row"><b>Ubicación:</b> {{ info.ubicacion }}</p>
+            <p class="detail-row"><b>Precio:</b> {{ info.precio_kwh }} €/kWh</p>
+
+            <!-- Estado: mostramos texto y en algunos casos leyenda -->
+            {% set estado_norm = info.estado.lower() %}
+            {% if estado_norm in ['activado','activo','available'] %}
+                <p class="detail-row"><b>Estado:</b> <span class="small">Activado</span></p>
+            {% elif estado_norm in ['parado','out_of_order','out of order'] %}
+                <p class="detail-row"><b>Estado:</b> <span class="small">Parado</span> <span class="out-of-order">Out of Order</span></p>
+            {% elif estado_norm in ['suministrando','ocupado','in_use'] %}
+                <p class="detail-row"><b>Estado:</b> <span class="small">Suministrando</span></p>
+                <!-- Detalle reservado para consumo en tiempo real (si existe) -->
+                <p class="detail-row"><b>Consumo (kW):</b> {{ info.consumo_kw if info.consumo_kw is defined else '-' }}</p>
+                <p class="detail-row"><b>Importe (€):</b> {{ info.importe_eur if info.importe_eur is defined else '-' }}</p>
+                <p class="detail-row"><b>Conductor:</b> {{ info.driver_id if info.driver_id is defined else '-' }}</p>
+            {% elif estado_norm in ['averiado','fault','broken'] %}
+                <p class="detail-row"><b>Estado:</b> <span class="small">Averiado</span></p>
+            {% elif estado_norm in ['desconectado','disconnected'] %}
+                <p class="detail-row"><b>Estado:</b> <span class="small">Desconectado</span></p>
+            {% else %}
+                <p class="detail-row"><b>Estado:</b> <span class="small">{{ info.estado }}</span></p>
+            {% endif %}
+            <p class="detail-row"><b>Healthy:</b> {{ info.healthy }}</p>
+            <p class="detail-row"><b>Suministrando:</b> {{ info.in_use }}</p>
         </div>
         {% endfor %}
     </div>
@@ -70,28 +121,96 @@
     </div>
 
     <script>
-        async function actualizarCPs() {
-            const res = await fetch("/api/cps");
-            const data = await res.json();
-            const grid = document.getElementById("cp-grid");
-            grid.innerHTML = "";
 
-            for (const [cp_id, info] of Object.entries(data)) {
-                const card = document.createElement("div");
-                card.className = "cp-card";
-                card.innerHTML = `
-                    <h3>${cp_id}</h3>
-                    <p><b>Ubicación:</b> ${info.ubicacion}</p>
-                    <p><b>Precio:</b> ${info.precio_kwh} €/kWh</p>
-                    <p><b>Estado:</b> <span class="status ${info.estado}">${info.estado}</span></p>
-                    <p><b>Healthy:</b> ${info.healthy}</p>
-                    <p><b>Suministrando:</b> ${info.in_use}</p>
+        /* Mapa de mapeo de cadenas de estado a nuestras clases canónicas */
+        function determinarEstado(info) {
+            // REGLA 1: si healthy es false -> AVERIADO
+            if (info.healthy === false && info.estado == 'active') {
+                return 'averiado';
+            }
+
+            // REGLA 2: si in_use es true -> SUMINISTRANDO
+            if (info.in_use === true) {
+                return 'suministrando';
+            }
+
+            // REGLA 3: normalizar lo que venga en info.estado
+            const raw = (info.estado ?? '').toString().trim().toLowerCase();
+
+            if (['activado','activo','available','active'].includes(raw)) return 'activado';
+            if (['parado','out_of_order','out of order'].includes(raw)) return 'parado';
+            if (['averiado','fault','broken'].includes(raw)) return 'averiado';
+            if (['desconectado','disconnected','offline'].includes(raw)) return 'desconectado';
+
+            // fallback si el servidor envía algo inesperado
+            return 'desconectado';
+        }
+
+
+        /* Construye la tarjeta HTML para cada CP según estado normalizado */
+        function crearTarjeta(cp_id, info) {
+            const estadoCanon = determinarEstado(info);
+            const card = document.createElement('div');
+            card.className = 'cp-card state-' + estadoCanon;
+
+            // leyenda extra para Parado
+            const outOfOrderLegend = (estadoCanon === 'parado') ? `<span class="out-of-order">Out of Order</span>` : '';
+
+            // Si es suministrando, intentamos mostrar detalles reales (si vienen en la API)
+            let suministroHTML = '';
+            if (estadoCanon === 'suministrando') {
+                const consumo = (info.consumo_kw !== undefined) ? info.consumo_kw : '-';
+                const importe = (info.importe_eur !== undefined) ? info.importe_eur : '-';
+                const driver = (info.driver_id !== undefined) ? info.driver_id : '-';
+                suministroHTML = `
+                    <p class="detail-row"><b>Consumo (kW):</b> ${consumo}</p>
+                    <p class="detail-row"><b>Importe (€):</b> ${importe}</p>
+                    <p class="detail-row"><b>Conductor:</b> ${driver}</p>
                 `;
-                grid.appendChild(card);
+            }
+
+            // Texto de estado legible
+            const estadoTextoMap = {
+                'activado': 'ACTIVADO',
+                'parado': 'PARADO',
+                'suministrando': 'SUMINISTRANDO',
+                'averiado': 'AVERIADO',
+                'desconectado': 'DESCONECTADO'
+            };
+            const estadoTexto = estadoTextoMap[estadoCanon] || info.estado || estadoCanon;
+
+            card.innerHTML = `
+                <h3>${cp_id}</h3>
+                <p class="detail-row"><b>Ubicación:</b> ${info.ubicacion ?? '-'}</p>
+                <p class="detail-row"><b>Precio:</b> ${info.precio_kwh ?? '-'} €/kWh</p>
+                <p class="detail-row"><b>Estado:</b> <span class="small">${estadoTexto}</span> ${outOfOrderLegend}</p>
+                ${suministroHTML}
+            `;
+            return card;
+        }
+
+        async function actualizarCPs() {
+            try {
+                const res = await fetch('/api/cps', {cache: 'no-store'});
+                if (!res.ok) {
+                    console.error('Error al consultar /api/cps:', res.status);
+                    return;
+                }
+                const data = await res.json();
+                const grid = document.getElementById('cp-grid');
+                grid.innerHTML = ''; // limpiamos antes de reconstruir
+
+                for (const [cp_id, info] of Object.entries(data)) {
+                    const card = crearTarjeta(cp_id, info);
+                    grid.appendChild(card);
+                }
+            } catch (err) {
+                console.error('Fallo al actualizar CPs:', err);
             }
         }
 
-        // Actualiza cada 2 segundos
+        // Primer fetch inmediato y luego cada 2s (como ya tenías)
+        actualizarCPs();
         setInterval(actualizarCPs, 2000);
     </script>
 </body>

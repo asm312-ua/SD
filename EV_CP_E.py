@@ -44,7 +44,7 @@ evento_menu_detener = threading.Event()
 # ============================================================
 # Configuración de Kafka
 # ============================================================
-KAFKA_BROKER = '172.20.243.100:9092'
+KAFKA_BROKER = 'localhost:9092'
 TOPIC_SOLICITUD = 'peticiones_engine'
 TOPIC_RESPUESTA = 'respuestas_central'
 TOPIC_TELEMETRIA = 'telemetry_cp'
@@ -89,7 +89,9 @@ def enviar_y_esperar_respuesta(driver_id: str, cp_id: str, timeout: float = 12.0
             respuesta = json.loads(msg.value().decode('utf-8'))
             # Filtrar SOLO respuestas para este Engine
             if (respuesta.get('cp_id') == CP_ID) and (respuesta.get('driver_id') == driver_id):
-                return True, respuesta.get('mensaje') or respuesta.get('estado')
+                mensaje = respuesta.get('mensaje') or respuesta.get('estado')
+                precio = respuesta.get('precio_kwh', 0.30)  # ✓ EXTRAE EL PRECIO
+                return True, mensaje, precio
         except Exception as e:
             print(f"[Engine {CP_ID}] Error parseando respuesta: {e}")
 
@@ -149,6 +151,7 @@ def escuchar_mensajes_central():
                 if data.get('cp_id') == CP_ID:
                     estado = (data.get('estado') or data.get('mensaje') or "").lower()
                     driver_id = data.get('driver_id', 'unknown')
+                    precio_kwh = float(data.get('precio_kwh', 1.0))
 
                     if 'autoriz' in estado or 'start' in estado:
                         if not en_uso:
@@ -156,7 +159,7 @@ def escuchar_mensajes_central():
                             en_uso = True
                             hilo_telemetria = threading.Thread(
                                 target=hilo_telemetria_f,
-                                args=(driver_id, 7.0, None),
+                                args=(driver_id, precio_kwh),
                                 daemon=True
                             )
                             hilo_telemetria.start()
@@ -177,50 +180,57 @@ almacen_telemetria = {}
 hilo_telemetria = None
 
 def enviar_ticket_final():
-    datos = almacen_telemetria.get(CP_ID, {})
+    datos = almacen_telemetria.get(CP_ID)
+    kwh_total = datos.get("kwh", 0)
+    precio_kwh = datos.get("precio_kwh", 0.3)
+    coste_total = datos.get("cost", kwh_total * precio_kwh)
+
     ticket = {
-        'cp_id': CP_ID,
-        'driver_id': datos.get('driver_id', 'unknown'),
-        'kwh': round(datos.get('kwh', 0.0), 6),
-        'cost': round(datos.get('cost', 0.0), 4),
-        'end_ts': time.time()
+        "cp_id": CP_ID,
+        "driver_id": datos.get("driver_id", "unknown"),
+        "kwh": kwh_total,
+        "precio_kwh": precio_kwh,
+        "cost": round(coste_total, 4),
+        "start_ts": datos.get("start_ts"),
+        "end_ts": time.time()
     }
+
     enviar_a_kafka(TOPIC_TICKETS, ticket)
-    print(f"[Engine {CP_ID}] Ticket enviado: kWh={ticket['kwh']} cost={ticket['cost']}")
+    print(f"[Engine {CP_ID}] Ticket enviado: kWh={ticket['kwh']} | Coste={ticket['cost']}€")
 
 
-def hilo_telemetria_f(driver_id: str, potencia_kw: float, duracion: float = None):
+def hilo_telemetria_f(driver_id: str, precio_kwh: float):
     global en_uso
-    inicio = time.time()
-    energia = 0.0
-    coste = 0.0
-    precio_kwh = 1
-    almacen_telemetria[CP_ID] = {'driver_id': driver_id, 'kwh': 0.0, 'cost': 0.0, 'start_ts': inicio}
+    almacen_telemetria[CP_ID] = {
+        "driver_id": driver_id,
+        "kwh": 0,
+        "precio_kwh": precio_kwh,
+        "cost": 0.0,
+        "start_ts": time.time()
+    }
 
+    print(f"[Engine {CP_ID}] Carga iniciada")
     try:
         while en_uso and not evento_apagado.is_set():
-            if duracion and (time.time() - inicio) >= duracion:
-                print(f"[Engine {CP_ID}] Duración alcanzada ({duracion}s). Finalizando suministro.")
-                break
-            if not saludable:
-                print(f"[Engine {CP_ID}] Avería detectada (saludable=False). Terminando suministro.")
-                break
+            almacen_telemetria[CP_ID]["kwh"] += 1 # Sumar 1 kWh por segundo
 
-            incremento = potencia_kw / 3600.0
-            energia += incremento
-            coste += incremento * precio_kwh
-            almacen_telemetria[CP_ID].update({'kwh': energia, 'cost': coste})
+            # Calcular coste total acumulado
+            coste_actual = almacen_telemetria[CP_ID]["kwh"] * precio_kwh
+            almacen_telemetria[CP_ID]["cost"] = coste_actual
 
-            print(f"[Engine {CP_ID}] Telemetría actualizada: kWh={round(energia, 6)} cost={round(coste, 4)}")
+            print(
+                f"[Engine {CP_ID}] kWh cargados: {almacen_telemetria[CP_ID]['kwh']} | "
+                f"Coste total: {round(coste_actual, 4)}€"
+            )
 
-            for _ in range(10):
-                if not en_uso or evento_apagado.is_set() or not saludable:
-                    break
-                time.sleep(0.1)
+            time.sleep(1)
+
     finally:
-        en_uso = False
-        enviar_ticket_final()
+        enviar_ticket_final()              # usa los valores guardados en el almacenamiento
         almacen_telemetria.pop(CP_ID, None)
+        en_uso = False
+        print(f"[Engine {CP_ID}] Carga finalizada")
+
 
 
 # ============================================================
@@ -342,22 +352,20 @@ def menu_interactivo():
                     print("[!] Ya está en uso.")
                     continue
                 driver_id = input('Driver ID: ').strip() or 'DRIVER_SIM'
-                try:
-                    potencia = float(input('Potencia kW (default 7.0): ').strip() or '7.0')
-                except Exception:
-                    potencia = 7.0
-                try:
-                    duracion_txt = input('Duración (segundos): ').strip()
-                    duracion = float(duracion_txt) if duracion_txt else None
-                except Exception:
-                    duracion = None
-
                 print("[Engine] Solicitud enviada. Esperando respuesta de la Central...")
-                ok, resp = enviar_y_esperar_respuesta(driver_id, CP_ID)
+                ok, resp, precio_recibido = enviar_y_esperar_respuesta(driver_id, CP_ID)
+
                 if ok and isinstance(resp, str) and 'autoriz' in resp.lower():
+                    if precio_recibido is None:
+                        precio_recibido = 0.30  # fallback
+                    
+                    print(f"[Engine] Carga autorizada. Precio: {precio_recibido} €/kWh")
                     en_uso = True
-                    print("[Engine] Carga iniciada. Enviando telemetría...")
-                    hilo_telemetria = threading.Thread(target=hilo_telemetria, args=(driver_id, potencia, duracion))
+                    hilo_telemetria = threading.Thread(
+                        target=hilo_telemetria_f,
+                        args=(driver_id, precio_recibido),
+                        daemon=True
+                    )
                     hilo_telemetria.start()
                 else:
                     print(f"[!] Respuesta no válida o denegada: {resp}")
@@ -393,7 +401,7 @@ def menu_interactivo():
                 print("[✓] Estado marcado como saludable.")
 
             elif cmd in ('5', 'status'):
-                print(f"[Engine]Estado actual: saludable={saludable}, en_uso={en_uso}")
+                print(f"[Engine] Estado actual: saludable={saludable}, en_uso={en_uso}")
 
             elif cmd in ('6', 'quit'):
                 print("Cerrando Engine...")
@@ -448,11 +456,11 @@ if __name__ == '__main__':
             if resultado == 'exit':
                 break
             activar_evento.clear()
-            print("[Engine] Volviendo a modo espera.")
+            print(f"\n[Engine {CP_ID}] Parado: Esperando activación desde Central.")
     finally:
         evento_apagado.set()
         hilo_monitor.join(timeout=2.0)
-        print('[Engine] Apagado completo.')
+        print('[Engine {CP_ID}] Apagado completo.')
         if 'hilo_listener' in locals() and hilo_listener.is_alive():
             hilo_listener.join(timeout=2.0)
         if productor_kafka:

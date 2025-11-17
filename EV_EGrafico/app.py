@@ -4,6 +4,7 @@ import time
 
 app = Flask(__name__)
 
+IP_CENTRAL = 'localhost'
 DB_FILE = "../basedatos.json"
 
 def cargar_cp_basedatos():
@@ -26,5 +27,5 @@ def api_cps():
     return jsonify(cps)
 
 if __name__ == "__main__":
-    print("[Servidor gráfico] Ejecutando en http://ip.central:8080 ...")
-    app.run(host="172.21.243.101", port=8080, debug=True)
+    print(f"[Servidor gráfico] Ejecutando en http://{IP_CENTRAL}:8080 ...")
+    app.run(host=IP_CENTRAL, port=8080, debug=True)

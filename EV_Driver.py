@@ -58,14 +58,14 @@ def escuchar_respuestas(broker, driver_id):
             # 🔸 Caso especial: ticket final recibido
             if estado == 'ticket_final':
                 kwh = float(data.get('kwh', 0))
-                precio_unitario = float(data.get('cost', 0))  # cost = €/kWh
-                total = round(kwh * precio_unitario, 2)
+                coste = float(data.get('cost', 0))
+                precio_kwh = float(data.get('precio_kwh',0))
 
                 print("\n============= TICKET FINAL DE CARGA =============")
                 print(f"Punto de carga: {cp_id}")
                 print(f"Energía suministrada: {kwh:.2f} kWh")
-                print(f"Precio por kWh: {precio_unitario:.3f} €/kWh")
-                print(f"IMPORTE TOTAL: {total:.2f} €")
+                print(f"Precio por kWh: {precio_kwh:.3f} €/kWh")
+                print(f"IMPORTE TOTAL: {coste:.2f} €")
                 print("==================================================\n")
 
                 #print(f"[{driver_id}] Finalizando recepción de mensajes.")

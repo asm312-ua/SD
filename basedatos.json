@@ -1,25 +1,27 @@
 {
   "CP01": {
     "ubicacion": "Calle Mayor 15",
-    "precio_kwh": 0.3,
+    "precio_kwh": 0.7,
     "estado": "ACTIVO",
     "healthy": true,
     "in_use": false,
     "last_ticket": {
       "cp_id": "CP01",
       "driver_id": "DRIVER1",
-      "kwh": 0.060278,
-      "cost": 0.0603,
-      "end_ts": 1762881112.3506129
+      "kwh": 73,
+      "precio_kwh": 0.7,
+      "cost": 51.1,
+      "start_ts": 1763423305.8052278,
+      "end_ts": 1763423378.834777
     },
-    "ip": "172.21.243.102",
-    "cmd_port": 6003
+    "ip": "192.168.18.67",
+    "cmd_port": 6002
   },
   "CP02": {
     "ubicacion": "Av. de Europa 22",
     "precio_kwh": 0.25,
-    "estado": "ACTIVO",
-    "healthy": true,
+    "estado": "DESACTIVADO",
+    "healthy": false,
     "in_use": false,
     "last_ticket": {
       "cp_id": "CP02",
@@ -37,5 +39,14 @@
     "estado": "DESCONECTADO",
     "healthy": false,
     "in_use": false
+  },
+  "CP05": {
+    "ubicacion": "Desconocida",
+    "precio_kwh": 0.3,
+    "estado": "ACTIVO",
+    "healthy": true,
+    "in_use": false,
+    "ip": "192.168.18.67",
+    "cmd_port": 6002
   }
 }
