@@ -10,7 +10,7 @@ from threading import Thread
 # ============================================================
 TOPIC_SOLICITUDES_DRIVER = "solicitudes_driver"  # Driver produce
 TOPIC_RESPUESTAS_CENTRAL = "respuestas_central"  # Driver escucha
-
+barrier = True
 
 # ============================================================
 # Callback de envío
@@ -33,7 +33,7 @@ def escuchar_respuestas(broker, driver_id):
     }
     consumer = Consumer(consumer_config)
     consumer.subscribe([TOPIC_RESPUESTAS_CENTRAL])
-
+    global barrier
     print(f"[{driver_id}] Escuchando respuestas en '{TOPIC_RESPUESTAS_CENTRAL}'...")
 
     try:
@@ -67,7 +67,7 @@ def escuchar_respuestas(broker, driver_id):
                 print(f"Precio por kWh: {precio_kwh:.3f} €/kWh")
                 print(f"IMPORTE TOTAL: {coste:.2f} €")
                 print("==================================================\n")
-
+                barrier = False
                 #print(f"[{driver_id}] Finalizando recepción de mensajes.")
                 #consumer.close()
                 #print(f"[{driver_id}] Cerrando driver...")
@@ -87,7 +87,7 @@ def escuchar_respuestas(broker, driver_id):
 # Manejo de solicitudes
 # ============================================================
 def manejo_solicitudes(producer, driver_id, fichero=None):
-
+    global barrier
     # HAY FICHERO
     if fichero:
         if not os.path.exists(fichero):
@@ -99,7 +99,9 @@ def manejo_solicitudes(producer, driver_id, fichero=None):
 
         for cp_id in cp_list:
             enviar_solicitud(producer, driver_id, cp_id)
-            sleep(4)
+            while barrier:
+                sleep(1)
+            barrier = True
         print(f"[{driver_id}] Se han enviado correctamente todas las solicitudes.")
     
     # NO HAY FICHERO

@@ -21,15 +21,14 @@ except Exception:
 # ============================================================
 # Validación de parámetros de entrada
 # ============================================================
-if len(sys.argv) != 5:
-    print("Uso: python EV_CP_E.py <cp_id> <monitor_port> <central_host> <central_port_solicitudes>")
+if len(sys.argv) != 4:
+    print("Uso: python EV_CP_E.py <cp_id> <monitor_port> <central_host>")
     print("Ejemplo: python EV_CP_E.py CP01 5000 127.0.0.1 6001")
     sys.exit(1)
 
 CP_ID = sys.argv[1]
 MONITOR_PORT = int(sys.argv[2])
 CENTRAL_HOST = sys.argv[3]
-CENTRAL_PORT_SOLICITUDES = int(sys.argv[4])
 
 # ============================================================
 # Variables de estado del CP
@@ -44,7 +43,7 @@ evento_menu_detener = threading.Event()
 # ============================================================
 # Configuración de Kafka
 # ============================================================
-KAFKA_BROKER = 'localhost:9092'
+KAFKA_BROKER = '172.21.243.93:9092'
 TOPIC_SOLICITUD = 'peticiones_engine'
 TOPIC_RESPUESTA = 'respuestas_central'
 TOPIC_TELEMETRIA = 'telemetry_cp'
