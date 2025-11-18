@@ -2,25 +2,25 @@
   "CP01": {
     "ubicacion": "Calle Mayor 15",
     "precio_kwh": 0.7,
-    "estado": "ACTIVO",
-    "healthy": true,
+    "estado": "DESCONECTADO",
+    "healthy": false,
     "in_use": false,
     "last_ticket": {
       "cp_id": "CP01",
       "driver_id": "DRIVER1",
-      "kwh": 73,
+      "kwh": 11,
       "precio_kwh": 0.7,
-      "cost": 51.1,
-      "start_ts": 1763423305.8052278,
-      "end_ts": 1763423378.834777
+      "cost": 7.7,
+      "start_ts": 1763474246.5787108,
+      "end_ts": 1763474257.5833933
     },
-    "ip": "192.168.18.67",
+    "ip": "172.27.225.177",
     "cmd_port": 6002
   },
   "CP02": {
     "ubicacion": "Av. de Europa 22",
     "precio_kwh": 0.25,
-    "estado": "DESACTIVADO",
+    "estado": "DESCONECTADO",
     "healthy": false,
     "in_use": false,
     "last_ticket": {
@@ -41,12 +41,30 @@
     "in_use": false
   },
   "CP05": {
-    "ubicacion": "Desconocida",
-    "precio_kwh": 0.3,
-    "estado": "ACTIVO",
-    "healthy": true,
+    "ubicacion": "Calle Colon",
+    "precio_kwh": "1.2",
+    "estado": "DESCONECTADO",
+    "healthy": false,
     "in_use": false,
     "ip": "192.168.18.67",
     "cmd_port": 6002
+  },
+  "CP06": {
+    "ubicacion": "Avenida Reyes Catolicos",
+    "precio_kwh": "2",
+    "estado": "ACTIVO",
+    "healthy": true,
+    "in_use": false,
+    "ip": "172.27.225.177",
+    "cmd_port": 6002,
+    "last_ticket": {
+      "cp_id": "CP06",
+      "driver_id": "DRIVER1",
+      "kwh": 11,
+      "precio_kwh": "2",
+      "cost": 22.0,
+      "start_ts": 1763476281.451957,
+      "end_ts": 1763476292.3542206
+    }
   }
 }

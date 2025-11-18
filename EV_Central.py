@@ -87,9 +87,10 @@ def manejar_estado_cp(conn, addr):
                     with lock_estados:
                         # Si NO existe el CP lo cremos con los datos por defecto
                         if cp_id not in estados_cp:
+                            print(f"\n[Central] Registrado un nuevo CP: {cp_id}")
                             estados_cp[cp_id] = {
                                 "ubicacion": "Desconocida",
-                                "precio_kwh": 0.30,
+                                "precio_kwh": 0.3,
                                 "estado": "DESCONECTADO",
                                 "healthy": False,
                                 "in_use": False,
@@ -145,13 +146,14 @@ def menu_central():
         print("1. Ver estado de CPs")
         print("2. Activar CP")
         print("3. Apagar CP")
-        print("4. Salir")
+        print("4. Registrar/Manejar datos de CPs")
+        print("5. Salir")
         print("=================================================================")
         op = input("> ").strip()
         if op == '1':
             with lock_estados:
-                print("\nID\tUbicación\t\tPrecio\tEstado\tHealthy\tIn_Use")
-                print("---------------------------------------------------------------------")
+                print("\nID\tUbicación\t\tPrecio\t\tEstado\t\tHealthy\tIn_Use")
+                print("----------------------------------------------------------------------------------")
                 for cp, info in estados_cp.items():
                     print(f"{cp}\t{info['ubicacion'][:18]:<18}\t{info['precio_kwh']} €/kWh\t{info['estado']}\t{info['healthy']}\t{info['in_use']}")
         elif op == '2':
@@ -159,6 +161,24 @@ def menu_central():
         elif op == '3':
             enviar_orden(input("CP ID: ").strip(), 'sleep')
         elif op == '4':
+            cp_id = input("CP ID: ")
+            info = estados_cp.get(cp_id)
+            print(f"{cp_id} -> Ubicación actual: {info['ubicacion']} | Precio actual: {info['precio_kwh']}")
+            opcion = input("¿Desea cambiar los datos? (S/N): ")
+            if opcion == 'S':
+                nueva_ubicacion = input(f"Introduce la ubicación de {cp_id}: ")
+                nuevo_precio = input(f"Introduce el precio/kWh de {cp_id}: ")
+                if nueva_ubicacion is None:
+                    nueva_ubicacion = "Desconocida"
+                if nuevo_precio is None:
+                    nuevo_precio = 0.3
+                estados_cp[cp_id]['ubicacion'] = nueva_ubicacion
+                estados_cp[cp_id]['precio_kwh'] = nuevo_precio
+            elif opcion == 'N':
+                continue
+            else:
+                print("Opción inválida.")
+        elif op == '5':
             break
         else:
             print("Opción inválida.")
